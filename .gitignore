@@ -1,0 +1,40 @@
+# ROS 2 / colcon build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Vendored third-party sources (pulled by scripts/setup.sh)
+ros2_ws/src/third_party/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Rosbags / recordings
+*.bag
+*.db3
+rosbag2_*/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Note: result figures under experiments/plots/ (*.png, *.gif) ARE tracked on purpose —
+# they are the published results embedded throughout the documentation.
+
+# Exploratory / undocumented local scripts not part of the published demos or results.
+sim/scripts/city_navigate.py
+sim/scripts/depth_avoid.py
+sim/scripts/run_px4_offboard_demo.sh
+sim/scripts/gcs_arm.py
+experiments/plot_bandwidth.py
+
+# Working notes kept out of the published tree
+ROADMAP.md

@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>swarm_autonomy_perception</name>
+  <version>0.0.0</version>
+  <description>OpenVINS VIO bringup, VIO-&gt;EKF2 external-vision bridge, target detection.</description>
+  <maintainer email="manasreddyarumalla@gmail.com">Swarm Autonomy</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>swarm_autonomy_msgs</exec_depend>
+  <!-- px4_msgs is provided by the px4_ros_com overlay (scripts/setup.sh) -->
+  <exec_depend>px4_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

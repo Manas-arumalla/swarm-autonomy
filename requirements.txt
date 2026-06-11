@@ -1,0 +1,8 @@
+# Python dependencies for the headless simulator, experiments, and unit tests.
+# (The ROS 2 / PX4 / Gazebo stack is installed separately — see scripts/setup.sh.)
+numpy
+scipy
+matplotlib
+imageio          # GIF rendering in sim/run_sim.py
+opencv-python    # blob detection core (use opencv-python-headless on servers/CI)
+pytest

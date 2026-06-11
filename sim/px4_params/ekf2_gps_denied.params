@@ -1,0 +1,16 @@
+# PX4 EKF2 parameters for GPS-denied external-vision flight.
+# Apply per vehicle (param load / MAVLink) after SITL boot. External vision is
+# fed by swarm_autonomy_perception/vio_to_ekf2_bridge from OpenVINS odometry.
+#
+# Format: <group> <param> <value>   (load with PX4's param mechanism)
+
+# Disable GPS control; fuse external vision for position + yaw.
+param set EKF2_GPS_CTRL 0
+param set EKF2_EV_CTRL 11        # bitmask: horiz pos + vert pos + yaw from EV
+param set EKF2_HGT_REF 3         # height reference = external vision
+param set EKF2_EV_DELAY 50.0     # ms; tune to VIO pipeline latency
+param set EKF2_EV_NOISE_MD 1     # use EV observation noise from the message
+
+# Offboard / commander tolerances for SITL bring-up.
+param set COM_RCL_EXCEPT 4       # allow offboard without RC
+param set NAV_DLL_ACT 0

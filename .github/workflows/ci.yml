@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    # Pure-Python cores (link model, CBBA, pursuit, PID, map merge) — no ROS needed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest numpy scipy opencv-python-headless
+      - name: Run algorithmic unit tests
+        run: |
+          export PYTHONPATH=$PWD/ros2_ws/src/swarm_autonomy_comms:$PWD/ros2_ws/src/swarm_autonomy_coordination:$PWD/ros2_ws/src/swarm_autonomy_mapping:$PWD/ros2_ws/src/swarm_autonomy_control:$PWD/ros2_ws/src/swarm_autonomy_planning
+          pytest -q \
+            ros2_ws/src/swarm_autonomy_comms/test \
+            ros2_ws/src/swarm_autonomy_coordination/test \
+            ros2_ws/src/swarm_autonomy_mapping/test \
+            ros2_ws/src/swarm_autonomy_control/test \
+            ros2_ws/src/swarm_autonomy_planning/test \
+            ros2_ws/src/swarm_autonomy_perception/test \
+            sim/swarm_sim/test
+
+  colcon-build:
+    # Builds the Swarm Autonomy packages that don't need the PX4 overlay, in a ROS 2
+    # Jazzy container, and runs colcon test (lint + pytest).
+    runs-on: ubuntu-latest
+    container: ros:jazzy-ros-base
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tooling
+        run: |
+          apt-get update
+          apt-get install -y python3-colcon-common-extensions python3-pytest \
+            python3-numpy python3-scipy
+      - name: colcon build (core packages)
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          colcon build --packages-select \
+            swarm_autonomy_msgs swarm_autonomy_comms swarm_autonomy_coordination \
+            swarm_autonomy_mapping swarm_autonomy_planning
+      - name: colcon test
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          source install/setup.bash
+          colcon test --packages-select \
+            swarm_autonomy_comms swarm_autonomy_coordination swarm_autonomy_mapping
+          colcon test-result --verbose

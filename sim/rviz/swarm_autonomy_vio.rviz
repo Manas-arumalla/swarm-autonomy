@@ -1,0 +1,90 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Color: 80; 80; 80
+      Plane Cell Count: 40
+      Reference Frame: global
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Marker Scale: 2
+    - Class: rviz_default_plugins/Path
+      Name: VIO Trajectory
+      Enabled: true
+      Topic:
+        Value: /pathimu
+        Depth: 5
+        Reliability Policy: Best Effort
+      Color: 25; 255; 0
+      Line Style: Billboards
+      Line Width: 0.1
+    - Class: rviz_default_plugins/Odometry
+      Name: VIO Pose
+      Enabled: true
+      Topic:
+        Value: /odomimu
+        Reliability Policy: Best Effort
+      Keep: 1
+      Shape:
+        Value: Arrow
+        Color: 255; 25; 0
+        Shaft Length: 0.6
+        Head Length: 0.3
+    - Class: rviz_default_plugins/PointCloud2
+      Name: SLAM Features
+      Enabled: true
+      Topic:
+        Value: /points_slam
+        Reliability Policy: Best Effort
+      Size (Pixels): 5
+      Style: Points
+      Color: 0; 170; 255
+      Color Transformer: FlatColor
+    - Class: rviz_default_plugins/PointCloud2
+      Name: MSCKF Features
+      Enabled: true
+      Topic:
+        Value: /points_msckf
+        Reliability Policy: Best Effort
+      Size (Pixels): 3
+      Style: Points
+      Color: 255; 255; 0
+      Color Transformer: FlatColor
+    - Class: rviz_default_plugins/Image
+      Name: Camera + Feature Tracks
+      Enabled: true
+      Topic:
+        Value: /trackhist
+        Reliability Policy: Best Effort
+  Global Options:
+    Fixed Frame: global
+    Background Color: 30; 30; 35
+  Enabled: true
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/FocusCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 30
+      Pitch: 0.6
+      Yaw: 0.8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+Window Geometry:
+  Height: 900
+  Width: 1500
+  Displays:
+    collapsed: false

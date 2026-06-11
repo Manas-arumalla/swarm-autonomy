@@ -1,0 +1,37 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Image
+      Name: Drone 0 camera
+      Enabled: true
+      Topic:
+        Value: /pursuit_cam0
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/Image
+      Name: Drone 1 camera
+      Enabled: true
+      Topic:
+        Value: /pursuit_cam1
+        Reliability Policy: Best Effort
+  Global Options:
+    Background Color: 30; 30; 35
+  Enabled: true
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 20
+Window Geometry:
+  Height: 760
+  Width: 1300
+  Displays:
+    collapsed: false
+  Drone 0 camera:
+    collapsed: false
+  Drone 1 camera:
+    collapsed: false
