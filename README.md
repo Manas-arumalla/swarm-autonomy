@@ -73,13 +73,16 @@ tests** and reproduced by headless benchmark scripts that need no GPU and no man
   **2.7× smoother** than a reactive baseline.
 - **Navigation among buildings** — a CPU ESDF + ego-planner-style optimizer keeps **+0.9 m**
   clearance where straight-line motion would pass **3.6 m through** a building.
+- **Scales to 20 agents** — coverage time falls **59 s → 8.4 s** from 1 → 20 drones (headless sim)
+  with the busiest comms link under **1%** of its cap, and the saturation point is measured and
+  reported, not hidden.
 
 ## Results
 
-All figures are produced by deterministic, headless scripts under [`experiments/`](experiments/)
-and regenerate in under a minute via [`experiments/make_figures.sh`](experiments/make_figures.sh).
-Full methodology, metric definitions, and ablations are in
-[**docs/benchmarks.md**](docs/benchmarks.md).
+All figures are produced by deterministic, headless scripts under [`experiments/`](experiments/):
+[`experiments/make_figures.sh`](experiments/make_figures.sh) regenerates the core set in under a
+minute, and `python3 sim/scaling.py` reruns the swarm-size sweep (≈10 minutes). Full methodology,
+metric definitions, and ablations are in [**docs/benchmarks.md**](docs/benchmarks.md).
 
 | Capability | Metric | Baseline | Swarm Autonomy | Figure |
 |---|---|---|---|---|

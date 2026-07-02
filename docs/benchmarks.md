@@ -1,10 +1,10 @@
 # Benchmarks
 
 This document defines how Swarm Autonomy is evaluated, what each metric means, and the measured results.
-Every figure is produced by a deterministic, headless script under [`experiments/`](../experiments/)
-or [`sim/benchmarks.py`](../sim/benchmarks.py); all are regenerated together by
-[`experiments/make_figures.sh`](../experiments/make_figures.sh) in under a minute, with no GPU, no
-ROS, and no manual piloting.
+Every figure is produced by a deterministic, headless script under [`experiments/`](../experiments/),
+[`sim/benchmarks.py`](../sim/benchmarks.py), or [`sim/scaling.py`](../sim/scaling.py). The core set
+regenerates together via [`experiments/make_figures.sh`](../experiments/make_figures.sh) in under a
+minute; the swarm-size scaling sweep takes about ten minutes. No GPU, no ROS, no manual piloting.
 
 ## Methodology
 
@@ -30,6 +30,7 @@ ROS, and no manual piloting.
 | Comms sensitivity | coverage time, throttled link | 15.6 s | 19.8 s | **+27% penalty** |
 | Navigation among buildings | min. obstacle clearance | −3.6 m (straight line) | +0.9 m | collision-free |
 | GPS-denied VIO handover | EKF2↔vision error (mean / max) | mono diverges | 0.26 m / 0.70 m | metric-scale lock |
+| Swarm-size scaling | time to 90% coverage | 59.3 s (1 drone) | 8.4 s (20 drones) | **7×**, saturates N≈12 |
 
 ---
 
