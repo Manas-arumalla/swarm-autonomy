@@ -15,6 +15,8 @@
   <img src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
+> **Related:** [flowswarm](https://github.com/Manas-arumalla/flowswarm) — the algorithms-from-scratch companion (pure-Python ORCA / A\* / GNN-PPO, no ROS) for the multi-robot coordination ideas used here.
+
 <p align="center">
   <img src="experiments/plots/pursuit.gif" width="60%"><br>
   <em>Decentralized cooperative pursuit in the headless swarm simulator — pursuers allocate
