@@ -12,7 +12,6 @@
   <img src="https://img.shields.io/badge/ROS%202-Jazzy-22314E?logo=ros&logoColor=white">
   <img src="https://img.shields.io/badge/Sim-PX4%20SITL%20%2B%20Gazebo%20Harmonic-005571">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
-  <img src="https://img.shields.io/badge/tests-77%20passing-2ca02c">
   <img src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
