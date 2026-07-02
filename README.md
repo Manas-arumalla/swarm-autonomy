@@ -48,6 +48,19 @@ I separate **algorithmic cores** (pure, dependency-free, unit-tested Python) fro
 wrappers**, so the coordination, comms, mapping, and planning logic is verified by **77 unit
 tests** and reproduced by headless benchmark scripts that need no GPU and no manual piloting.
 
+### What's mine vs. what's integrated
+
+| Layer | What runs here | Origin |
+|---|---|---|
+| Comms middleware + link model | range/rate/dropout gating, bandwidth metering | **mine** |
+| Coordination & pursuit | CBBA allocator, containment/interception geometry, MPC guidance, Kalman target tracker, reciprocal avoidance | **mine** (CBBA implements Choi et al. 2009) |
+| Mapping & planning (CPU) | occupancy + ESDF, A\* + elastic-band optimizer | **mine**, following the ego-planner formulation |
+| Cooperative exploration | frontier detection + claim sharing over the gated link | **mine**, modelled on RACER |
+| Headless swarm simulator & benchmarks | deterministic evaluation of all of the above | **mine** |
+| Visual-inertial odometry | stereo VIO | **OpenVINS** (vendored) |
+| GPU mapping backend | interface-compatible ESDF drop-in | **nvblox** (planned swap-in) |
+| Flight stack & world | vehicle dynamics, EKF2, rendering | **PX4 SITL + Gazebo Harmonic** |
+
 ## Highlights
 
 - **GPS-denied flight on stereo VIO** — I diagnosed and fixed a vision/state-estimation handover
@@ -75,6 +88,7 @@ Full methodology, metric definitions, and ablations are in
 | Comms sensitivity | coverage time, throttled radio | 15.6 s | 19.8 s (**+27%**) | `coop_exploration.png` |
 | Navigation among buildings | min. obstacle clearance | −3.6 m (straight line) | **+0.9 m** | `plan_among_buildings.png` |
 | Pursuit guidance | command jitter (lower = smoother) | 0.91 (reactive) | **0.34** (MPC, 2.7×) | `control_compare.png` |
+| Swarm-size scaling (headless) | time to 90% coverage | 59.3 s (solo) | **8.4 s** (20 drones) | `scaling_vs_n.png` |
 
 ### GPS-denied flight on visual-inertial odometry
 
@@ -109,6 +123,19 @@ smoother** velocity commands (jitter 0.91 → 0.34) with fewer reversals and low
 than a tuned reactive lead-pursuit law.
 
 ![MPC vs. reactive](experiments/plots/control_compare.png)
+
+### Swarm-size scaling: 1 → 20 agents
+
+The headless simulator sweeps swarm size N ∈ {1…20} (six seeded maps per point): coverage time
+falls **59 s → 8.4 s** and saturates past N ≈ 12 — a measured sizing limit (the map runs out
+before the coordination does). Total gossip grows super-linearly to **133 kB/s** at N = 20 while
+the **busiest single link stays under 1 %** of its cap — decentralized sharing scales because no
+link carries the aggregate. Capture is 100 % from N ≥ 3. The same stack, unchanged, completes a
+2 m 20 s explore→detect→capture mission on a **100 m city**. Scope: headless sim scales to 20
+agents; the PX4 SITL demos fly 2–3 vehicles. Full details in
+[docs/benchmarks.md](docs/benchmarks.md#6-swarm-size-scaling-120-agents).
+
+![Scaling vs N](experiments/plots/scaling_vs_n.png)
 
 ## Architecture
 
@@ -197,8 +224,9 @@ ros2 launch swarm_autonomy_bringup multi_drone.launch.py num_drones:=3
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | System architecture, the comms choke point, the pure-core/thin-node pattern, data flow. |
 | [docs/benchmarks.md](docs/benchmarks.md) | Evaluation methodology, metric definitions, full results, and ablations. |
-| [docs/engineering-notes.md](docs/engineering-notes.md) | Technical deep-dives: the stereo-VIO handover fix and the pursuit-perception investigation. |
+| [docs/engineering-notes.md](docs/engineering-notes.md) | Technical deep-dives: the stereo-VIO handover fix, the pursuit-perception investigation, and hardening live pursuit under occlusion. |
 | [docs/design-decisions.md](docs/design-decisions.md) | Rationale behind the major component and architecture choices. |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | PX4 SITL multi-vehicle + Gazebo Harmonic field notes: symptom → cause → fix for the failures that don't print errors. |
 | [docs/sim-to-real.md](docs/sim-to-real.md) | The hardware path: what transfers, what breaks, BOM and timeline. |
 
 ## Hardware notes

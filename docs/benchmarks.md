@@ -146,6 +146,50 @@ and produces three scaling figures:
 
 Reproduce: `python3 sim/benchmarks.py`
 
+## 6. Swarm-size scaling (1–20 agents)
+
+[`sim/scaling.py`](../sim/scaling.py) sweeps swarm size N ∈ {1, 2, 3, 5, 8, 12, 16, 20} on the
+headless simulator — six seeded maps per point, exploration and pursuit measured separately — and
+writes `scaling_vs_n.png`. Scope note: **headless simulator: 20 agents; PX4 SITL: 2–3 vehicles**
+(the live demos). The claims below are per-simulator by design.
+
+| N | Time to 90% coverage | Comms, all links | Busiest single link | Capture rate | Time to capture |
+|---|---|---|---|---|---|
+| 1 | 59.3 ± 6.9 s | 0 B/s | 0 B/s | 83 % | 44.7 s |
+| 2 | 31.5 ± 6.1 s | 59 B/s | 31 B/s | 67 % | 27.5 s |
+| 3 | 22.1 ± 4.4 s | 0.5 kB/s | 93 B/s | 100 % | 17.7 s |
+| 5 | 14.5 ± 1.7 s | 2.2 kB/s | 128 B/s | 100 % | 15.6 s |
+| 8 | 11.1 ± 0.6 s | 2.1 kB/s | 47 B/s | 100 % | 14.1 s |
+| 12 | 8.6 ± 0.2 s | 17.6 kB/s | 152 B/s | 100 % | 12.2 s |
+| 16 | 8.3 ± 0.1 s | 8.8 kB/s | 50 B/s | 100 % | 11.6 s |
+| 20 | 8.4 ± 0.2 s | 133 kB/s | 398 B/s | 100 % | 12.1 s |
+
+![Scaling vs N](../experiments/plots/scaling_vs_n.png)
+
+What the sweep shows — including the measured limits:
+
+- **Exploration saturates at this map size.** Coverage time falls 59 s → 8.4 s but flattens past
+  N ≈ 12: on a 40 m map, twelve sensing footprints already tile the free space, and additional
+  drones spend their time deconflicting rather than discovering. The limit is the map, not the
+  coordination — a useful sizing rule (≈ 1 drone per 130 m² of free space here).
+- **Total gossip grows super-linearly; per-link load does not.** Target-sighting traffic flows on
+  every directed pair, so the *aggregate* delivered load reaches 133 kB/s at N = 20 — more than
+  three times one link's 40 kB/s budget — while the **busiest single link stays under 1 % of its
+  cap**. Decentralized gossip survives scaling precisely because no single link has to carry the
+  aggregate; the wobble between N points reflects how often the roaming evader is actually
+  sighted on each map.
+- **Interception saturates early and stays there.** 100 % capture from N ≥ 3 with time-to-capture
+  shrinking toward ~12 s; the N = 2 dip (67 %) is real — two pursuers can neither tile the map
+  for search nor close a containment ring, the worst of both regimes.
+
+**End-to-end mission at range.** The same stack, unchanged, on a **100 × 100 m city** (6× the
+benchmark map's area) with three drones: 50 % mapped at t = 64 s, first camera detection at
+t = 135.6 s, capture 4.1 s later at t = 139.7 s (closest approach 0.7 m) — a 2 m 20 s
+explore → map → detect → pursue → capture mission, confirming nothing in the stack assumes the
+40 m map.
+
+Reproduce: `python3 sim/scaling.py` (≈ 10 minutes; deterministic)
+
 ## Limitations
 
 These benchmarks exercise the **shipped coordination / comms / allocation / pursuit-geometry code**
