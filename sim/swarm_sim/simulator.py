@@ -22,6 +22,7 @@ from swarm_autonomy_coordination import pursuit
 
 from .drone import Drone
 from .evader import Evader
+from .exploration import ExplorationGoalStrategy, NearestFrontierStrategy
 from .world import World, default_city
 
 # Role constants mirror swarm_autonomy_msgs/msg/DroneRole.msg
@@ -78,9 +79,11 @@ class SimResult:
 
 
 class Simulator:
-    def __init__(self, world: World | None = None, cfg: SimConfig | None = None):
+    def __init__(self, world: World | None = None, cfg: SimConfig | None = None,
+                 exploration_strategy: ExplorationGoalStrategy | None = None):
         self.cfg = cfg or SimConfig()
         self.world = world or default_city(self.cfg.seed)
+        self.exploration_strategy = exploration_strategy or NearestFrontierStrategy()
         self.rng = random.Random(self.cfg.seed)
         c = self.cfg
 
@@ -89,7 +92,9 @@ class Simulator:
         x = 2.0
         while len(self.drones) < c.num_drones:
             if self.world.is_free(x, 2.0, margin=0.5):
-                self.drones.append(Drone(len(self.drones), np.array([x, 2.0])))
+                drone = Drone(len(self.drones), np.array([x, 2.0]))
+                drone.initialize_local_map(self.world)
+                self.drones.append(drone)
             x += 3.0
             if x > self.world.width - 2:
                 x = 2.0 + self.rng.random()
@@ -106,6 +111,12 @@ class Simulator:
                         c.comms, random.Random(c.seed + a.drone_id * 131 + b.drone_id))
 
         self.beliefs: dict[int, Belief | None] = {d.drone_id: None for d in self.drones}
+        # Per-directed-link pending local-map deltas. A cell is retried until
+        # delivery, so range, loss, and bandwidth remain the only propagation path.
+        self._exploration_pending: dict[tuple[int, int], set[tuple[int, int]]] = {
+            (a.drone_id, b.drone_id): set()
+            for a in self.drones for b in self.drones if a.drone_id != b.drone_id
+        }
         self.t = 0.0
         self.phase = "explore"
         self.captured = False
@@ -150,6 +161,50 @@ class Simulator:
                         self.beliefs[dst.drone_id] = Belief(b.pos.copy(), b.vel.copy(), b.t, b.conf)
         return delivered
 
+    def _queue_exploration_updates(
+        self, src: Drone, cells: set[tuple[int, int]], *, exclude_id: int | None = None,
+    ) -> None:
+        """Queue this UAV's newly learned cells for each neighbour link."""
+        if not cells:
+            return
+        for dst in self.drones:
+            if dst.drone_id != src.drone_id and dst.drone_id != exclude_id:
+                self._exploration_pending[(src.drone_id, dst.drone_id)].update(cells)
+
+    def _share_exploration(self) -> list[tuple[int, int]]:
+        """Deliver queued local-map deltas through the existing link model."""
+        delivered: list[tuple[int, int]] = []
+        for src in self.drones:
+            for dst in self.drones:
+                if src.drone_id == dst.drone_id:
+                    continue
+                pending = self._exploration_pending[(src.drone_id, dst.drone_id)]
+                if not pending:
+                    continue
+                # Compact cell-index payload: 4-byte header plus two 16-bit indices/cell.
+                res = self.links[(src.drone_id, dst.drone_id)].try_deliver(
+                    self.t, self._range(src.drone_id, dst.drone_id), 4 + 4 * len(pending))
+                self.stats[src.drone_id].add(res)
+                self._win_stats.add(res)
+                if not res.delivered:
+                    continue
+                key = (src.drone_id, dst.drone_id)
+                self._win_pair[key] = self._win_pair.get(key, 0) + res.bytes
+                delivered.append(key)
+                assert dst.local_known is not None
+                assert dst.teammate_known is not None
+                for i, j in pending:
+                    dst.teammate_known[i, j] = 1
+                newly_learned = {(i, j) for i, j in pending if not dst.local_known[i, j]}
+                for i, j in newly_learned:
+                    dst.local_known[i, j] = 1
+                pending.clear()
+                # A received delta becomes this UAV's information, so it can
+                # relay it. Do not send it back to the sender, and only relay
+                # cells that were actually new locally to stop rebroadcast loops.
+                self._queue_exploration_updates(dst, newly_learned, exclude_id=src.drone_id)
+        return delivered
+
     def _fused_belief(self) -> Belief | None:
         """Freshest belief any drone currently holds (the propagated estimate)."""
         best = None
@@ -168,31 +223,8 @@ class Simulator:
 
     # ------------------------------------------------------------ exploration
     def _assign_exploration_goals(self) -> None:
-        frontiers = self.world.frontier_cells()
-        if not frontiers:
-            return
-        self._claimed_frontiers.clear()
-        for d in self.drones:
-            if d.role in (ROLE_BLOCKER, ROLE_INTERCEPTOR):
-                continue
-            need = d.goal is None or d.at_goal(1.2)
-            if not need and d.goal is not None:
-                gi = self.world._to_cell(*d.goal)
-                if gi in frontiers and gi not in self._claimed_frontiers:
-                    self._claimed_frontiers.add(gi)
-                    continue
-            best, bestd = None, 1e18
-            for (i, j) in frontiers:
-                if (i, j) in self._claimed_frontiers:
-                    continue
-                cx, cy = self.world.cell_center(i, j)
-                dist = np.linalg.norm(d.pos - np.array([cx, cy]))
-                if dist < bestd:
-                    best, bestd = (i, j), dist
-            if best is not None:
-                self._claimed_frontiers.add(best)
-                d.set_goal(self.world.cell_center(*best))
-                d.role = ROLE_SCOUT
+        self.exploration_strategy.assign_goals(
+            self.world, self.drones, self._claimed_frontiers)
 
     # ---------------------------------------------------------------- pursuit
     def _assign_pursuit_goals(self) -> None:
@@ -252,7 +284,12 @@ class Simulator:
 
         for d in self.drones:
             d.step(self.world, c.dt)
+            newly_known = d.sense(self.world)
+            self._queue_exploration_updates(d, newly_known)
+            # Global map is evaluation/rendering only; it is never passed to an
+            # exploration strategy.
             self.world.sense(d.pos[0], d.pos[1], d.sensor_radius)
+        delivered.extend(self._share_exploration())
 
         # The evader is stepped EVERY frame (it does not wait at its spawn until first detected):
         # it patrols while unthreatened and flees from pursuers it can plausibly see (within its
