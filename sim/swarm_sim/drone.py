@@ -32,6 +32,8 @@ class Drone:
     vel: np.ndarray = field(default_factory=lambda: np.zeros(2))
     goal: np.ndarray | None = None
     role: int = 0                        # mirrors swarm_autonomy_msgs DroneRole constants
+    local_known: np.ndarray | None = field(default=None, init=False, repr=False)
+    teammate_known: np.ndarray | None = field(default=None, init=False, repr=False)
     _pid_x: PID = field(init=False)
     _pid_y: PID = field(init=False)
 
@@ -42,6 +44,18 @@ class Drone:
 
     def set_goal(self, goal) -> None:
         self.goal = None if goal is None else np.asarray(goal, dtype=float)
+
+    def initialize_local_map(self, world: World) -> None:
+        """Allocate this UAV's independent exploration knowledge map."""
+        self.local_known = np.zeros((world.nx, world.ny), dtype=np.int8)
+        # Provenance for exploration cells received through the LinkModel.
+        self.teammate_known = np.zeros((world.nx, world.ny), dtype=np.int8)
+
+    def sense(self, world: World) -> set[tuple[int, int]]:
+        """Update only this UAV's local map from its unchanged sensor model."""
+        if self.local_known is None:
+            self.initialize_local_map(world)
+        return world.sense_into(self.local_known, self.pos[0], self.pos[1], self.sensor_radius)
 
     def _repulsion(self, world: World) -> np.ndarray:
         """Sum of short-range pushes away from nearby building edges."""

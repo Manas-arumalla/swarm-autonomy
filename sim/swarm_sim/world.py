@@ -39,7 +39,7 @@ class World:
     buildings: list[Rect] = field(default_factory=list)
 
     occ: np.ndarray = field(init=False)      # 1 = obstacle cell, 0 = free
-    known: np.ndarray = field(init=False)    # 1 = some drone has sensed this cell
+    known: np.ndarray = field(init=False)    # evaluation: 1 = some drone has sensed this cell
     nx: int = field(init=False)
     ny: int = field(init=False)
 
@@ -80,21 +80,45 @@ class World:
         return False
 
     # --- sensing / coverage ------------------------------------------------
-    def sense(self, x: float, y: float, radius: float) -> int:
-        """Mark cells within ``radius`` and line of sight as known; return the
-        number of newly discovered cells."""
+    def visible_cells(self, x: float, y: float, radius: float):
+        """Yield grid cells visible from a point using the sensor LOS geometry."""
         i0, j0 = self._to_cell(x - radius, y - radius)
         i1, j1 = self._to_cell(x + radius, y + radius)
-        newly = 0
         for i in range(i0, i1 + 1):
             for j in range(j0, j1 + 1):
-                if self.known[i, j]:
+                cx, cy = self.cell_center(i, j)
+                if math.hypot(cx - x, cy - y) <= radius and not self.blocked(x, y, cx, cy):
+                    yield i, j
+
+    def observable_unknown_free_count(self, known: np.ndarray, x: float, y: float,
+                                      radius: float) -> int:
+        """Count locally unknown free cells visible from a candidate position."""
+        return sum(known[i, j] == 0 and self.occ[i, j] == 0
+                   for i, j in self.visible_cells(x, y, radius))
+
+    def sense_into(self, known: np.ndarray, x: float, y: float,
+                   radius: float) -> set[tuple[int, int]]:
+        """Mark visible cells in ``known`` and return newly discovered cells.
+
+        ``known`` may be a drone-local map or this world's evaluation map.
+        Geometry and line-of-sight remain ground truth.
+        """
+        i0, j0 = self._to_cell(x - radius, y - radius)
+        i1, j1 = self._to_cell(x + radius, y + radius)
+        newly: set[tuple[int, int]] = set()
+        for i in range(i0, i1 + 1):
+            for j in range(j0, j1 + 1):
+                if known[i, j]:
                     continue
                 cx, cy = self.cell_center(i, j)
                 if math.hypot(cx - x, cy - y) <= radius and not self.blocked(x, y, cx, cy):
-                    self.known[i, j] = 1
-                    newly += 1
+                    known[i, j] = 1
+                    newly.add((i, j))
         return newly
+
+    def sense(self, x: float, y: float, radius: float) -> int:
+        """Update the global evaluation map; return newly covered cell count."""
+        return len(self.sense_into(self.known, x, y, radius))
 
     def coverage(self) -> float:
         """Fraction of the *free* space that has been sensed."""
@@ -104,17 +128,22 @@ class World:
             return 1.0
         return float((self.known[free] == 1).sum()) / n_free
 
-    def frontier_cells(self) -> list[tuple[int, int]]:
-        """Known-free cells adjacent to unknown free cells — exploration goals."""
+    def frontier_cells(self, known: np.ndarray | None = None) -> list[tuple[int, int]]:
+        """Frontier cells for the supplied knowledge map.
+
+        Omitting ``known`` retains the evaluation-map behavior for callers that
+        need a global view; drone decisions pass their local map explicitly.
+        """
+        known = self.known if known is None else known
         out: list[tuple[int, int]] = []
         for i in range(self.nx):
             for j in range(self.ny):
-                if self.known[i, j] != 1 or self.occ[i, j] != 0:
+                if known[i, j] != 1 or self.occ[i, j] != 0:
                     continue
                 for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     ni, nj = i + di, j + dj
                     if 0 <= ni < self.nx and 0 <= nj < self.ny \
-                            and self.known[ni, nj] == 0 and self.occ[ni, nj] == 0:
+                            and known[ni, nj] == 0 and self.occ[ni, nj] == 0:
                         out.append((i, j))
                         break
         return out

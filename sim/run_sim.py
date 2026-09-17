@@ -14,6 +14,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from swarm_sim.exploration import (DARTSARStage2Strategy, DARTSARStrategy,
+                                   NearestFrontierStrategy)  # noqa: E402
 from swarm_sim.simulator import Simulator, SimConfig          # noqa: E402
 from swarm_sim.world import default_city                       # noqa: E402
 
@@ -25,12 +27,24 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", default="experiments/plots/pursuit.gif")
     ap.add_argument("--no-gif", action="store_true", help="metrics only, skip rendering")
+    ap.add_argument("--explore-only", action="store_true",
+                help="run pure exploration benchmark")
+    ap.add_argument("--exploration-strategy", choices=("nearest", "dartsar", "dartsar-stage2"), default="nearest",
+                    help="frontier selection strategy (default: nearest)")
     ap.add_argument("--stride", type=int, default=2)
     args = ap.parse_args(argv)
 
-    cfg = SimConfig(num_drones=args.drones, max_time_s=args.time, seed=args.seed,
-                    record=not args.no_gif)
-    sim = Simulator(default_city(args.seed), cfg)
+    cfg = SimConfig(
+    num_drones=args.drones,
+    max_time_s=args.time,
+    seed=args.seed,
+    record=not args.no_gif,
+    explore_only=args.explore_only,
+)
+    strategy = {"nearest": NearestFrontierStrategy,
+                "dartsar": DARTSARStrategy,
+                "dartsar-stage2": DARTSARStage2Strategy}[args.exploration_strategy]()
+    sim = Simulator(default_city(args.seed), cfg, exploration_strategy=strategy)
     print(f"running: {args.drones} drones, {args.time:.0f}s sim, seed={args.seed} ...")
     res = sim.run()
 
